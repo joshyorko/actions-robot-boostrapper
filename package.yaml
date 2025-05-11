@@ -1,0 +1,32 @@
+name: Actions-Robot-Bootstrapper
+
+description: RCC ROBOT LIFECYCLE WRAPPERS VIA SUBPROCESS! APE MAKE CODE STRONK! 🦍
+
+# Package version number, recommend using semver.org
+version: 2.0.0
+
+# The version of the `package.yaml` format.
+spec-version: v2
+
+dependencies:
+  conda-forge:
+    - python=3.11.11
+    - uv=0.7.3
+  pypi:
+    - sema4ai-actions=1.3.11
+    - black=25.1.0
+
+
+
+packaging:
+  exclude:
+    - ./.git/**
+    - ./.vscode/**
+    - ./devdata/**
+    - ./output/**
+    - ./venv/**
+    - ./.venv/**
+    - ./.DS_Store/**
+    - ./**/*.pyc
+    - ./**/*.zip
+    - ./**/.env
