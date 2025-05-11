@@ -18,20 +18,22 @@ class Secret(BaseModel):
     value: str = ""
 
 
-def _run(cmd: List[str]) -> str:
+@action
+def run_shell_command(cmd: List[str], cwd: str = None) -> str:
     """
     MIGHTY GORILLA HELPER TO RUN RCC COMMANDS WITH POWER!
     
     Args:
         cmd: List of command parts to run
-        
+        cwd: Directory to run the command in (optional)
+    
     Returns:
         Combined stdout and stderr from command
-        
+    
     Raises:
         subprocess.CalledProcessError: If command fails
     """
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
     # Combine stdout and stderr for better error reporting
     output = result.stdout + result.stderr if result.stderr else result.stdout
     try:
@@ -39,7 +41,12 @@ def _run(cmd: List[str]) -> str:
     except subprocess.CalledProcessError:
         print(f"Command failed with return code {result.returncode}")
         print(f"Command output: {output}")
-    return output
+    return Response(result=output)
+
+# Add a non-decorated version for internal use
+
+def _run(cmd: List[str], cwd: str = None) -> str:
+    return run_shell_command(cmd, cwd=cwd)
 
 
 # SCAFFOLDING & TEMPLATES ACTIONS 🦍
@@ -137,17 +144,18 @@ def create_from_template(template: str, directory: str) -> Response[str]:
     return Response(result=result)
 
 @action
-def run_specific_task(task_name: str) -> Response[str]:
+def run_robot(task_name: str, robot_path: str) -> Response[str]:
     """
     RUN ONE TASK BY NAME!
     
     Args:
         task_name: Name of task to run
+        robot_path: Path to robot directory
         
     Returns:
         Command output
     """
-    return _run(["rcc", "run", "-t", task_name])
+    return _run(["rcc", "run", "-r", f"{robot_path}/robot.yaml"])
 
 @action
 def task_testrun() -> str:
@@ -222,16 +230,7 @@ def unwrap_robot(artifact: str) -> Response[str]:
     return _run(["rcc", "robot", "unwrap", "--artifact", artifact])
 
 # LOCAL EXECUTION ACTIONS 🦍
-@action
-def run_robot() -> Response[str]:
-    """
-    MAKE ROBOT RUN WILD!
-    
-    Returns:
-        Response with run output
-    """
-    result = _run(["rcc", "robot", "run"])
-    return Response(result=result)
+
 
 @action
 def run_task(task_name: str) -> Response[str]:
@@ -244,7 +243,7 @@ def run_task(task_name: str) -> Response[str]:
     Returns:
         Response with task output 
     """
-    result = _run(["rcc", "task", "run", "--task", task_name])
+    result = _run(["rcc", "run", "--task", task_name])
     return Response(result=result)
 
 @action
@@ -258,23 +257,8 @@ def list_tasks() -> Response[str]:
     result = _run(["rcc", "task", "list"])
     return Response(result=result)
 
-@action
-def test_robot() -> Response[str]:
-    """
-    CHECK IF ROBOT WORKS GOOD!
-    
-    Returns:
-        Response with test results
-    """
-    result = _run(["rcc", "robot", "test"])
-    return Response(result=result)
 
-@action
-def open_shell() -> str:
-    """
-    OPEN ROBOT COMMAND CAVE!
-    """
-    return _run(["rcc", "shell"])
+
 
 @action
 def script_in_robot(command: str) -> str:
@@ -289,90 +273,9 @@ def script_in_robot(command: str) -> str:
     """
     return _run(["rcc", "run", "--", command])
 
-# CLOUD ACTIONS 🍌
-@action
-def configure_credentials() -> Response[str]:
-    """
-    SET UP ROBOT CLOUD ACCESS!
-    
-    Returns:
-        Response with credentials setup output
-    """
-    result = _run(["rcc", "configure", "credentials"])
-    return Response(result=result)
 
-@action
-def list_workspaces() -> Response[str]:
-    """
-    SHOW ALL CLOUD WORKSPACES!
-    
-    Returns:
-        Response with workspaces list
-    """
-    result = _run(["rcc", "cloud", "workspace", "list"])
-    return Response(result=result)
 
-@action 
-def authorize_workspace(account: str, workspace_id: str, minutes: int) -> Response[str]:
-    """
-    GET PERMISSION TO USE WORKSPACE!
-    
-    Args:
-        account: Control Room account name
-        workspace_id: ID of workspace to authorize
-        minutes: How long auth should last
-        
-    Returns:
-        Response with authorization result
-    """
-    result = _run([
-        "rcc", "cloud", "authorize",
-        "--account", account,
-        "--workspace", workspace_id,
-        "--minutes", str(minutes)
-    ])
-    return Response(result=result)
 
-@action
-def register_robot(workspace: str, robot_name: str, api_key: Secret) -> Response[str]:
-    """
-    PUT ROBOT IN CLOUD SYSTEM!
-    
-    Args:
-        workspace: Workspace ID to register in
-        robot_name: Name for robot in cloud
-        api_key: Control Room API key
-        
-    Returns:
-        Response with registration result
-    """
-    result = _run([
-        "rcc", "cloud", "push",
-        "--workspace", workspace,
-        "--robot", robot_name, 
-        "--api-key", api_key.value
-    ])
-    return Response(result=result)
-
-@action
-def push_robot(workspace: str, robot_name: str, api_key: Secret) -> Response[str]:
-    """
-    SEND ROBOT TO CLOUD!
-    
-    Args:
-        workspace: Workspace ID to push to
-        robot_name: Name of robot to push
-        api_key: Control Room API key
-        
-    Returns:
-        Command output
-    """
-    return _run([
-        "rcc", "cloud", "push",
-        "--workspace", workspace,
-        "--robot", robot_name,
-        "--api-key", api_key.value
-    ])
 
 # DOCS & HELP ACTIONS 🦍
 @action
@@ -408,144 +311,8 @@ def docs_changelog() -> Response[str]:
     result = _run(["rcc", "docs", "changelog"])
     return Response(result=result)
 
-@action
-def show_help(subcommand: str = "") -> str:
-    """
-    GET HELP FOR COMMAND!
-    
-    Args:
-        subcommand: Optional command to get help for
-        
-    Returns:
-        Help text output
-    """
-    cmd = ["rcc", "help"]
-    if subcommand:
-        cmd.append(subcommand) 
-    return _run(cmd)
 
-# HOLOTREE ACTIONS 🍌
-@action
-def holotree_init(shared: bool = False) -> Response[str]:
-    """
-    START NEW HOLOTREE!
-    
-    Args:
-        shared: Whether to make shared holotree
-        
-    Returns:
-        Response with init result
-    """
-    cmd = ["rcc", "holotree", "init"]
-    if shared:
-        cmd.append("--shared")
-    result = _run(cmd)
-    return Response(result=result)
 
-@action
-def holotree_pull(name: str) -> Response[str]:
-    """
-    GET HOLOTREE FROM CLOUD!
-    
-    Args:
-        name: Name of holotree to pull
-        
-    Returns:
-        Response with pull result
-    """
-    result = _run(["rcc", "holotree", "pull", "--name", name])
-    return Response(result=result)
-
-@action
-def holotree_prebuild(name: str) -> Response[str]:
-    """
-    PREPARE HOLOTREE FOR USE!
-    
-    Args:
-        name: Name of holotree to prebuild
-        
-    Returns:
-        Response with prebuild result
-    """
-    result = _run(["rcc", "holotree", "prebuild", "--name", name])
-    return Response(result=result)
-
-@action 
-def holotree_export(name: str, zipfile: str) -> Response[str]:
-    """
-    PACK HOLOTREE IN ZIP!
-    
-    Args:
-        name: Name of holotree to export
-        zipfile: Path to output zip file
-        
-    Returns:
-        Response with export result
-    """
-    result = _run(["rcc", "holotree", "export", "--name", name, "--file", zipfile])
-    return Response(result=result)
-
-@action
-def holotree_import(zipfile: str) -> Response[str]:
-    """
-    UNPACK HOLOTREE FROM ZIP!
-    
-    Args:
-        zipfile: Path to zip file to import
-        
-    Returns:
-        Response with import result
-    """
-    result = _run(["rcc", "holotree", "import", "--file", zipfile])
-    return Response(result=result)
-
-@action
-def holotree_list() -> Response[str]:
-    """
-    SHOW ALL HOLOTREES!
-    
-    Returns:
-        Response with holotrees list
-    """
-    result = _run(["rcc", "holotree", "list"])
-    return Response(result=result)
-
-@action
-def holotree_remove(name: str) -> Response[str]:
-    """
-    DELETE HOLOTREE!
-    
-    Args:
-        name: Name of holotree to remove
-        
-    Returns:
-        Response with remove result
-    """
-    result = _run(["rcc", "holotree", "remove", "--name", name])
-    return Response(result=result)
-
-@action
-def holotree_vars() -> Response[str]:
-    """
-    SHOW HOLOTREE SETTINGS!
-    
-    Returns:
-        Response with holotree vars
-    """
-    result = _run(["rcc", "holotree", "vars"])
-    return Response(result=result)
-
-# MISC ACTIONS 🦍
-@action
-def version() -> Response[str]:
-    """
-    SHOW RCC VERSION!
-    
-    Returns:
-        Response with version info
-    """
-    result = _run(["rcc", "--version"])
-    return Response(result=result)
 
 @action
 def help() -> Response[str]:
@@ -927,3 +694,29 @@ def get_action_run_logs_latest(action_server_url: str) -> Response[str]:
     last_run = runs_payload[-1]
 
     return Response(result=get_action_run_logs(action_server_url, last_run["id"]))
+
+
+@action
+def get_file_contents(action_package_name: str, file_name: str = "actions.py") -> Response[str]:
+    """
+    Return the contents of a file in the action package directory (default: actions.py).
+    Args:
+        action_package_name: Name of the action package (directory under actions_bootstrapper)
+        file_name: Name of the file to read (default: actions.py)
+    Returns:
+        Response with file contents or error if not found
+    """
+    file_path = os.path.join(
+        os.path.expanduser("~"),
+        "actions_bootstrapper",
+        action_package_name,
+        file_name,
+    )
+    if not os.path.exists(file_path):
+        return Response(error=f"File not found: {file_path}")
+    try:
+        with open(file_path, "r") as f:
+            contents = f.read()
+        return Response(result=contents)
+    except Exception as e:
+        return Response(error=f"Error reading file: {e}")

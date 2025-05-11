@@ -4,147 +4,74 @@ This runbook is intended for automation engineers and Python developers embarkin
 
 This runbook covers two key workflows:
 
-1. **Robocorp Robot Lifecycle** using the RCC CLI (`rcc robot initialize`, dependency management, testing, packaging, and deployment to Control Room).
+1. **Robocorp Robot Lifecycle** using Python functions from `actions.py` (e.g., `create_robot`, `list_templates`, `run_task`, etc.).
 2. **Sema4.ai Action Development** within Microsoft VSCode using the Sema4.ai VSCode extension.
 
 ---
 
-### Part A: Robocorp Robot Lifecycle (RCC CLI)
+### Part A: Robocorp Robot Lifecycle (LLM Tool Calls)
 
-This section focuses on the RCC-driven robot lifecycle, providing necessary context and prerequisites before developing Sema4.ai actions in Part B.
+This section focuses on the Robocorp robot lifecycle, but **the LLM must only call the available Python functions (actions) from `actions.py` to perform all automation. Do not use RCC CLI commands.**
 
-**Objective**: Automate scaffolding, configuration, testing, packaging, and deployment of Robocorp robots.
+**Objective**: Automate scaffolding, configuration, testing, packaging, and deployment of Robocorp robots by calling the correct Python tool functions.
 
 #### 1. Scaffold a New Robot Project
 
 1. List available templates:
-
-   ```bash
-   rcc robot initialize --list
-   ```
+   - Call `list_templates()`
 2. Prompt user for:
-
-   * **Robot name** (directory)
-   * **Template** (e.g., `03-python-workitems`)
+   - **Robot name** (directory)
+   - **Template** (e.g., `03-python-workitems`)
 3. Initialize the robot:
-
-   ```bash
-   rcc robot initialize --template <template> --directory <robot_name>
-   # or short form:
-   rcc robot init -t <template> -d <robot_name>
-   ```
-4. Change into the project directory:
-
-   ```bash
-   cd <robot_name>
-   ```
+   - Call `create_robot(template, directory)`
+4. (Optional) Pull a robot from GitHub:
+   - Call `pull_robot(owner_repo, directory)`
 
 #### 2. Configure Python Dependencies
 
-1. Ask user for extra libraries (e.g., `pandas`, `requests`).
-2. For each library:
+- (If needed) Call `robot_dependencies()` to check dependencies.
+- (If needed) Call `robot_diagnostics()` to check robot health.
 
-   ```bash
-   rcc robot libs -a <library_name>
-   ```
-3. Review the updated environment:
+#### 3. List and Run Tasks
 
-   ```bash
-   cat conda.yaml
-   ```
+- List available tasks:
+  - Call `list_tasks()`
+- Run the robot:
+  - Call `run_robot()`
+- Run a specific task:
+  - Call `run_task(task_name)`
+- Run test tasks:
+  - Call `task_testrun()`
 
-#### 3. Open Interactive Shell for Local Edits
+#### 4. Package and Unwrap Robot
 
-1. Describe that this command opens an interactive environment for editing code and configuration files.
-2. Run shell:
+- Package the robot:
+  - Call `wrap_robot()`
+- Unwrap a robot artifact:
+  - Call `unwrap_robot(artifact)`
 
-   ```bash
-   rcc task shell
-   ```
-3. Exit when done (`exit` or `Ctrl-D`).
+#### 5. Documentation and Help
 
-#### 4. Execute Local Tests
+- Show documentation:
+  - Call `docs_list()`
+- Show recipes:
+  - Call `docs_recipes()`
+- Show changelog:
+  - Call `docs_changelog()`
+- Show help:
+  - Call `help()`
 
-1. Inform user of test run.
-2. Run robot:
+#### 6. Best Practices
 
-   ```bash
-   rcc run
-   ```
-3. Execute test tasks:
+- Use descriptive names for robots and tasks.
+- Keep tasks single-purpose.
+- Use error handling and logging in your robot code.
+- Use variables/config files for flexibility.
 
-   ```bash
-   rcc task testrun
-   ```
-4. Display pass/fail summary and logs.
+#### 7. Error Handling
 
-#### 5. Package the Robot
-
-1. Inform packaging step.
-2. Wrap robot:
-
-   ```bash
-   rcc robot wrap
-   ```
-3. Confirm artifact location (`./artifacts/robot_name.zip`).
-
-#### 6. Register and Push to Control Room
-
-1. Prompt for workspace name.
-2. Register in Control Room:
-
-   ```bash
-   rcc cloud new --workspace <workspace> <robot_name>
-   ```
-3. Push to Control Room:
-
-   ```bash
-   rcc cloud push --workspace <workspace> <robot_name>
-   ```
-4. Confirm registration and push status.
-
-#### 7. Verify Deployment
-
-1. Ask user to log into Control Room via browser.
-2. Navigate to **Robots** and locate the new robot.
-3. Check version, last update time, and status.
-
-##### Custom Robot Tasks
-
-* Edit `robot.yaml`:
-
-  ```yaml
-  tasks:
-    My Task:
-      shell: python -m robot --report NONE --outputdir output --logtitle "Task log" tasks/my_task.robot
-  ```
-* Create `.robot` files in `tasks/` with Robot Framework syntax.
-
-##### Best Practices
-
-* Use descriptive names.
-* Keep tasks single-purpose.
-* Leverage built-in and Robocorp libraries.
-* Implement robust error handling and logging.
-* Use variables/config files for flexibility.
-
-##### Error Handling
-
-###### RCC Failures
-
-* Capture exit code, show stderr, suggest fixes (`--force`, update `rcc`).
-
-###### Control Room Issues
-
-* Check network connectivity, verify workspace name & permissions, regenerate API key.
-
-###### Dependency Conflicts
-
-* Review `conda.yaml` for conflicting versions, suggest compatible versions, guide manual edits.
-
-###### Test Failures
-
-* Display detailed logs, highlight failing tests, suggest debugging steps.
+- If a function call fails, capture the error and suggest next steps or retries.
+- For dependency or diagnostics issues, call `robot_dependencies()` or `robot_diagnostics()` and report the results.
 
 ---
 
@@ -280,3 +207,16 @@ Run these steps one at a time, confirming success:
 
 * Ask: "Anything else I can help with?"
 * If no, then `stop_action_server` and end session.
+
+---
+
+### File Management for Safe Edits
+
+Before updating any file (such as actions.py or other code/config files), always use the `get_file_contents` action to retrieve and review the current contents. This ensures that updates are context-aware and do not overwrite existing code or comments.
+
+**Recommended workflow for code or config updates:**
+1. Use `get_file_contents` with the target file path to fetch the latest file contents.
+2. Review the file and generate only the necessary changes (patch-style edits).
+3. Apply the update, ensuring only the intended sections are changed and all other content is preserved.
+
+This approach prevents accidental overwrites and supports collaborative, incremental development.
