@@ -76,6 +76,50 @@ This section focuses on the Robocorp robot lifecycle, but **the LLM must only ca
 - If a function call fails, capture the error and suggest next steps or retries.
 - For dependency or diagnostics issues, call `robot_dependencies()` or `robot_diagnostics()` and report the results.
 
+
+
+#### 8. Updating robot.yaml and conda.yaml
+
+- When creating or updating a robot ensure all 'Tasks' are added to the `robot.yaml` file.:
+
+  ```yaml
+# For more details on the format and content:
+# https://github.com/robocorp/rcc/blob/master/docs/recipes.md#what-is-in-robotyaml
+
+tasks:
+  <task_name>:
+    shell: python -m robocorp.tasks run tasks.py -t <task_name>
+
+environmentConfigs:
+  - environment_windows_amd64_freeze.yaml
+  - environment_linux_amd64_freeze.yaml
+  - environment_darwin_amd64_freeze.yaml
+  - conda.yaml
+
+artifactsDir: output
+
+PATH:
+  - .
+PYTHONPATH:
+  - .
+ignoreFiles:
+  - .gitignore
+
+- If a Python dependency is needed for a task/robot, update or create `conda.yaml` with:
+
+  ```yaml
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12.8                 # https://pyreadiness.org/3.10
+  - uv=0.6.11                     # https://github.com/astral-sh/uv
+  - pip:
+    - robocorp==3.0.0             # https://pypi.org/project/robocorp
+    - <package>==<version>
+
+  ```
 ---
 
 ### Part B: Sema4.ai Action Development (VSCode)
