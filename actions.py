@@ -19,34 +19,57 @@ class Secret(BaseModel):
 
 
 @action
-def run_shell_command(cmd: List[str], cwd: str = None) -> str:
+def run_shell_command(cmd: List[str], cwd: str = None) -> Response[str]:
     """
     MIGHTY GORILLA HELPER TO RUN RCC COMMANDS WITH POWER!
     
     Args:
-        cmd: List of command parts to run
+        cmd: List of command parts to run (e.g., ["ls", "-la"] not ["ls -la"])
         cwd: Directory to run the command in (optional)
     
     Returns:
-        Combined stdout and stderr from command
+        Response with combined stdout and stderr from command
     
     Raises:
         subprocess.CalledProcessError: If command fails
     """
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
-    # Combine stdout and stderr for better error reporting
-    output = result.stdout + result.stderr if result.stderr else result.stdout
+    # Validate input parameters
+    if not cmd:
+        return Response(error="Command list cannot be empty")
+    
+    # Filter out empty strings from command list
+    cmd = [part for part in cmd if part.strip()]
+    
+    if not cmd:
+        return Response(error="Command list contains only empty strings")
+    
+    # Check if user accidentally passed a single string with spaces
+    if len(cmd) == 1 and ' ' in cmd[0]:
+        return Response(error=f"Command appears to contain spaces: '{cmd[0]}'. Please split into separate list items. For example: ['ls', '-la'] instead of ['ls -la']")
+    
     try:
-        result.check_returncode()
-    except subprocess.CalledProcessError:
-        print(f"Command failed with return code {result.returncode}")
-        print(f"Command output: {output}")
-    return Response(result=output)
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+        # Combine stdout and stderr for better error reporting
+        output = result.stdout + result.stderr if result.stderr else result.stdout
+        try:
+            result.check_returncode()
+        except subprocess.CalledProcessError:
+            print(f"Command failed with return code {result.returncode}")
+            print(f"Command output: {output}")
+        return Response(result=output)
+    except FileNotFoundError as e:
+        return Response(error=f"Command not found: {cmd[0]}. Make sure the command exists and is in your PATH. Error: {str(e)}")
+    except Exception as e:
+        return Response(error=f"Error executing command: {str(e)}")
 
 # Add a non-decorated version for internal use
 
 def _run(cmd: List[str], cwd: str = None) -> str:
-    return run_shell_command(cmd, cwd=cwd)
+    """Internal helper function that calls run_shell_command and extracts the result"""
+    response = run_shell_command(cmd, cwd=cwd)
+    if hasattr(response, 'error') and response.error:
+        raise Exception(response.error)
+    return response.result if hasattr(response, 'result') else str(response)
 
 
 # SCAFFOLDING & TEMPLATES ACTIONS 🦍
@@ -317,8 +340,8 @@ def docs_changelog() -> Response[str]:
 @action
 def help() -> Response[str]:
     """
-    SHOW ALL HELP!
     
+@action
     Returns:
         Response with help text
     """
@@ -343,7 +366,7 @@ def bootstrap_action_package(action_package_name: str) -> Response[str]:
 
     os.makedirs(new_action_package_path, exist_ok=True)
 
-    command = f"action-server new --name '{action_package_name}' --template minimal"
+    command = f"action-server new --name '{action_package_name}' --template basic"
     subprocess.run(command, shell=True, cwd=new_action_package_path)
 
     full_action_path = get_action_package_path(action_package_name)

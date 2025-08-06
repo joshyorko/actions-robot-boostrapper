@@ -1,3 +1,6 @@
+---
+applyTo: '**'
+---
 This runbook is intended for automation engineers and Python developers embarking on Robocorp robot projects and Sema4.ai action development.
 
 ## Runbook
@@ -92,7 +95,7 @@ Whenever writing an action for a specific API:
 
 #### 2. Managing Dependencies (`package.yaml`)
 
-* If a Python dependency is needed, update or create `package.yaml` with:
+* If a Python dependency is needed, update or create `package.yaml` with.:
 
   ```yaml
   name: <short_name>
@@ -103,6 +106,7 @@ Whenever writing an action for a specific API:
     conda-forge:
       - python=3.10.14
     pypi:
+      - sema4ai-actions
       - <package>=<version>
   packaging:
     exclude:
@@ -111,7 +115,7 @@ Whenever writing an action for a specific API:
       - ./devdata/**
       - ./output/**
       - ./venv/**
-      - ./**/*.pyc
+      - ./**/*.pycA
       - ./**/*.zip
       - ./**/.env
   ```
